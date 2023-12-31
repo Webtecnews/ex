@@ -1,31 +1,42 @@
-import requests
-from bs4 import BeautifulSoup
+name: auftanken
 
-def extract_src_from_html(html_code):
-    soup = BeautifulSoup(html_code, 'html.parser')
-    script_tag = soup.find('script', string=lambda text: text and 'player.source =' in text)
-    src_value = None
-    if script_tag:
-        src_start = script_tag.string.find("'https://")  
-        src_end = script_tag.string.find(".m3u8'") + len(".m3u8'")
-        src_value = script_tag.string[src_start:src_end]
-    return src_value
+on:
+  schedule:
+    - cron: '00 */12 * * *'
+  workflow_dispatch:
 
-def main():
-    # Fetch HTML content from the URL
-    url = 'https://webplayer.sbctv.ch/auftanken/'
-    response = requests.get(url)
-    
-    if response.status_code == 200:
-        html_code = response.text
-        src = extract_src_from_html(html_code)
-        if src:
-            src = src.strip("'\"")
-            print(src)
-        else:
-            print("No 'player.source =' found in the HTML content.")
-    else:
-        print("Failed to fetch HTML content. Status code:", response.status_code)
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-if __name__ == "__main__":
-    main()
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: config
+        run: |
+          git config --global user.email "<>"
+          git config --global user.name "auftanken bot"
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install beautifulsoup4 requests
+
+      - name: Execute Python script
+        run: python3 ressources/infos/barkers/auftanken.py > ressources/infos/barkers/auftanken.m3u8
+
+      - name: git add
+        run: |
+          git add -A
+          ls -la 
+          
+      - name: commit & push
+        run: |
+          git pull origin master
+          git commit -m "auftanken updated"
+          git push origin master
